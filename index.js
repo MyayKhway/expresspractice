@@ -1,5 +1,13 @@
 const express = require('express')
+const morgan = require('morgan')
+const cors = require('cors')
+
 const app = express()
+app.use(express.json())
+app.use(cors())
+
+morgan.token('data', (req, res) => JSON.stringify(req.body))
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :data'))
 
 let numbers = [
     { 
@@ -53,7 +61,40 @@ app.get('/api/persons/:id', (request, response) => {
     }
 })
 
-const PORT = 3001
+app.delete('/api/persons/:id', (request, response) => {
+  const id = Number(request.params.id)
+  if (numbers.some(number => number.id == id)) {
+    numbers = numbers.filter(number => number.id !== id)
+    response.status(204).end()
+  } else {
+    response.status(404).end()
+  }
+})
+
+app.post('/api/persons', (request, response) => {
+  const id = Math.floor(Math.random() * 500)
+  const person = request.body
+  if (!person.name) {
+    return response.status(404).json({
+      error: 'Cannot save contact without a name'
+    })
+  }
+  if (!person.number) {
+    return response.status(404).json({
+      error: 'Cannot save contact without a number'
+    })
+  }
+  if (numbers.some(number => number.name === person.name)) {
+    return response.status(404).json({
+      error: 'There is already a contact existed with the same name'
+    })
+  }
+    person.id = id
+    numbers = numbers.concat(person)
+    response.json(numbers)
+})
+
+const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
 })
